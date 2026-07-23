@@ -236,7 +236,18 @@ async def upload_data(file: UploadFile = File(...)):
         "message": "Upload Successful",
         "filename": file.filename
     }
-
+@app.get("/API/TestDB")
+def test_db(db: Session = Depends(get_db)):
+    try:
+        count = db.query(User).count()
+        return {
+            "status": "Database Connected",
+            "users": count
+        }
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
 if __name__ == "__main__":
 
     uvicorn.run(
