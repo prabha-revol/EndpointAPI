@@ -95,7 +95,7 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         return {
             "error": str(e)
         }
-        @app.post("/API/Login")
+@app.post("/API/Login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
