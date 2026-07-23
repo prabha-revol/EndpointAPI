@@ -53,71 +53,38 @@ def home():
 @app.post("/API/RegisterEndpoint")
 def register(user: UserRegister, db: Session = Depends(get_db)):
 
-    # Check if username already exists
-    existing_user = db.query(User).filter(User.username == user.username).first()
+    try:
 
-    if existing_user:
+        existing_user = db.query(User).filter(
+            User.username == user.username
+        ).first()
+
+        if existing_user:
+            return {
+                "message": "Username already exists"
+            }
+
+        hashed = hash_password(user.password)
+
+        new_user = User(
+            username=user.username,
+            email=user.email,
+            password=hashed
+        )
+
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
         return {
-            "message": "Username already exists"
+            "message": "User Registered Successfully",
+            "id": new_user.id
         }
 
-    new_user = User(
-        username=user.username,
-        email=user.email,
-        password=hash_password(user.password)
-    )
-
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    return {
-        "message": "User Registered Successfully",
-        "id": new_user.id
-    }
-@app.post("/API/Login")
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
-):
-
-    db_user = db.query(User).filter(
-        User.username == form_data.username
-    ).first()
-
-    if db_user is None:
+    except Exception as e:
         return {
-            "message": "User Not Found"
-        }
-
-    if not verify_password(
-        form_data.password,
-        db_user.password
-    ):
-        return {
-            "message": "Incorrect Password"
-        }
-
-    access_token = create_access_token(
-        data={
-            "sub": db_user.username
-        }
-    )
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
-@app.get("/API/Profile")
-def profile(token: str = Depends(oauth2_scheme)):
-
-    username = verify_token(token)
-
-    return {
-        "message": "Profile Access Successful",
-        "username": username
-    }
-#get endpoint
+            "error": str(e)
+        }#get endpoint
 @app.get("/API/GetEndpointInfo")
 def get_endpoint_info():
 
