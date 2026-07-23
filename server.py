@@ -58,7 +58,7 @@ def home():
 def register(user: UserRegister, db: Session = Depends(get_db)):
 
     try:
-        logger.info("Register API called")
+        logger.info(f"Received User: {user}")
 
         existing_user = db.query(User).filter(
             User.username == user.username
@@ -69,12 +69,14 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
                 "message": "Username already exists"
             }
 
-        hashed_password = hash_password(user.password)
+        hashed = hash_password(user.password)
+
+        logger.info(f"Hashed Password: {hashed}")
 
         new_user = User(
             username=user.username,
             email=user.email,
-            password=hashed_password
+            password=hashed
         )
 
         db.add(new_user)
@@ -82,18 +84,18 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         db.refresh(new_user)
 
         return {
-            "message": "User Registered Successfully",
+            "message": "Success",
             "id": new_user.id
         }
 
     except Exception as e:
 
-        logger.exception("Register API Error")
+        logger.exception(e)
 
         return {
-            "message": str(e)
+            "error": str(e)
         }
-@app.post("/API/Login")
+        @app.post("/API/Login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
