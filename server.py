@@ -8,12 +8,16 @@ import uvicorn
 from database import SessionLocal, engine
 from models import Base, User
 from schemas import UserRegister, UserUpdate, UserLogin
+import traceback
+import logging
 from auth import (
     hash_password,
     verify_password,
     create_access_token,
     verify_token
 )
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/API/Login"
@@ -54,6 +58,7 @@ def home():
 def register(user: UserRegister, db: Session = Depends(get_db)):
 
     try:
+        logger.info("Register API called")
 
         existing_user = db.query(User).filter(
             User.username == user.username
@@ -64,12 +69,12 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
                 "message": "Username already exists"
             }
 
-        hashed = hash_password(user.password)
+        hashed_password = hash_password(user.password)
 
         new_user = User(
             username=user.username,
             email=user.email,
-            password=hashed
+            password=hashed_password
         )
 
         db.add(new_user)
@@ -82,9 +87,55 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
         }
 
     except Exception as e:
+
+        logger.exception("Register API Error")
+
         return {
-            "error": str(e)
-        }#get endpoint
+            "message": str(e)
+        }
+@app.post("/API/Login")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+
+    db_user = db.query(User).filter(
+        User.username == form_data.username
+    ).first()
+
+    if db_user is None:
+        return {
+            "message": "User Not Found"
+        }
+
+    if not verify_password(
+        form_data.password,
+        db_user.password
+    ):
+        return {
+            "message": "Incorrect Password"
+        }
+
+    access_token = create_access_token(
+        data={
+            "sub": db_user.username
+        }
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+@app.get("/API/Profile")
+def profile(token: str = Depends(oauth2_scheme)):
+
+    username = verify_token(token)
+
+    return {
+        "message": "Profile Access Successful",
+        "username": username
+    }
+#get endpoint
 @app.get("/API/GetEndpointInfo")
 def get_endpoint_info():
 
